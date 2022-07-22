@@ -29,41 +29,34 @@ io.on("connection", (socket) => {
     clientRooms[socket.id] = roomName;
     console.log("Socket id of creator:", socket.id);
     socket.emit("gameCode", roomName); // emit game code 
-    //state [roomName] = initstate
     socket.join(roomName);
-    spcket.emit("connectToRoom", { roomName: roomName , socketId: socket.id});
+    socket.emit("connectToRoom", { "roomName": roomName , "socketId": socket.id});
 
   }
 
   function joinGame(roomName) {
     console.log("Socket id of joiner:", socket.id);
-    const room = io.sockets.adapter.rooms[roomName];
-    let allUsers;
-     if (room) {
-       allUsers = room.sockets;
-       console.log("All users in room:", allUsers);
-     }
+    clientSet=io.sockets.adapter.rooms.get(roomName);
+    let allUsers = clientSet.size
     
-     let numClients = 0;
-     if (allUsers) {
-       numClients = Object.keys(allUsers).length;
-       console.log("numClients", numClients);
-     }
     
-     if (numClients === 0) {
-       //client.emit('unknownCode');
-       console.log("unknownCode");
-       return;
-     } else if (numClients > 1) {
-       //client.emit('tooManyPlayers');
-       console.log("tooManyPlayers");
-       return;
-     }
+    //
+    //  if (allUsers === 0) {
+    //   //client.emit('unknownCode');
+    //   console.log("unknownCode");
+    //   return;
+    // } else if (allUsers > 1) {
+    //   //client.emit('tooManyPlayers');
+    //   console.log("tooManyPlayers");
+    //   return;
+    // }
     
     clientRooms[socket.id] = roomName;
 
     socket.join(roomName);
+    socket.emit("connectToRoom", { "roomName": roomName , "socketId": socket.id});
     console.log(io.of("/").adapter);
+
     // console.log("numClients", numClients);
 
     // client.number = 2;
