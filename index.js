@@ -14,12 +14,11 @@ server.listen(3001, () => {
 });
 
 const clientRooms = {}; // socket id as key and room name as value
-const state = {};
 let availableRooms = [];
 
 io.on("connection", (socket) => {
   console.log(`a user connected: ${socket.id}`);
-  socket.on("newGame", createNewGame);
+  socket.on("playGame", createNewGame);
 
   function createNewGame() {
     // Its like joining
@@ -30,8 +29,17 @@ io.on("connection", (socket) => {
       a = Array.from(io.sockets.adapter.rooms.get(roomName));
       console.log(`All ids in room${roomName} are ${a}`);
       clientRooms[socket.id] = roomName;
-      socket.emit("connectToRoom", { roomName: roomName, socketId: socket.id }); // see for self
+      socket.emit("secondConnectedToRoom", {
+        roomName: roomName,
+        socketId: socket.id,
+      }); // see for self
       socket.broadcast.to(roomName).emit("playerJoined", socket.id); // to the person waiting in the room
+      socket.on("disconnect", () => {
+        console.log(`${socket.id} disconnected`);
+        socket.leave(roomName);
+        availableRooms.push(roomName);
+        socket.broadcast.to(roomName).emit("playerLeft", socket.id);
+      });
     } else {
       // Its like creating
       let roomName = Math.random().toString(36).substring(2, 15);
@@ -39,6 +47,13 @@ io.on("connection", (socket) => {
       socket.join(roomName);
       clientRooms[socket.id] = roomName;
       socket.emit("connectToRoom", { roomName: roomName, socketId: socket.id }); // see for self
+      // when client left the room
+      socket.on("disconnect", () => {
+        console.log(`${socket.id} disconnected`);
+        socket.leave(roomName);
+        availableRooms.push(roomName);
+        socket.broadcast.to(roomName).emit("playerLeft", socket.id);
+      });
     }
   }
 });
