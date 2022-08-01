@@ -21,42 +21,80 @@ io.on("connection", (socket) => {
   socket.on("playGame", createNewGame);
 
   function createNewGame() {
-    // Its like joining
     if (availableRooms.length > 0) {
       console.log("Available Rooms", availableRooms);
       const roomName = availableRooms.pop();
       socket.join(roomName);
-      a = Array.from(io.sockets.adapter.rooms.get(roomName));
-      console.log(`All ids in room${roomName} are ${a}`);
+      console.log(`${socket.id} joined room ${roomName}`);
+      const a = Array.from(io.sockets.adapter.rooms.get(roomName));
+      console.log(`All ids in room ${roomName} are ${a}`);
       clientRooms[socket.id] = roomName;
+
       socket.emit("secondConnectedToRoom", {
         roomName: roomName,
         socketId: socket.id,
       }); // see for self
-      socket.broadcast.to(roomName).emit("playerJoined", socket.id); // to the person waiting in the room
+      socket.broadcast
+        .to(roomName)
+        .emit("playerJoined", { sockerId: socket.id, roomName: roomName }); // to the person waiting in the room which is creator of that room
+
+      socket.on("toJoiner", (data) => {
+        console.log(data);
+        socket.broadcast.to(roomName).emit("joinerData", data);
+      });
+
+      socket.on("hello", (data) => {
+        console.log(data);
+      });
       socket.on("disconnect", () => {
-        console.log(`${socket.id} disconnected`);
+        console.log(`${socket.id} joiner disconnected and left  ${roomName}`);
         socket.leave(roomName);
-        availableRooms.push(roomName);
-        socket.broadcast.to(roomName).emit("playerLeft", socket.id);
+        // availableRooms.push(roomName);
+        socket.emit("disconnected", {
+          // not showing anything
+          roomName: roomName,
+          socketId: socket.id,
+        });
+        socket.broadcast
+          .to(roomName)
+          .emit("playerLeft", { socketId: socket.id, roomName: roomName }); // to the person in the room
+        //console.log(Array.from(io.sockets.adapter.rooms.get(roomName))[0]);
       });
     } else {
-      // Its like creating
       let roomName = Math.random().toString(36).substring(2, 15);
       availableRooms.push(roomName);
       socket.join(roomName);
       clientRooms[socket.id] = roomName;
+      console.log(`${socket.id} created and joined room ${roomName}`);
       socket.emit("connectToRoom", { roomName: roomName, socketId: socket.id }); // see for self
       // when client left the room
       socket.on("disconnect", () => {
-        console.log(`${socket.id} disconnected`);
+        console.log(`${socket.id} creator disconnected and left ${roomName} `);
         socket.leave(roomName);
-        availableRooms.push(roomName);
-        socket.broadcast.to(roomName).emit("playerLeft", socket.id);
+        availableRooms = availableRooms.filter((room) => room !== roomName);
+        socket.broadcast
+          .to(roomName)
+          .emit("playerLeft", { socketId: socket.id, roomName: roomName });
+
+        socket.on("hello", (data) => {
+          console.log("hello");
+        });
+        socket.emit("disconnected", {
+          socketId: socket.id,
+          roomName: roomName,
+        });
       });
     }
   }
 });
+
+// if user left the room all other in room gets disconnected
+//       if (io.sockets.adapter.rooms[roomName]) {
+//         io.sockets.adapter.rooms[roomName].sockets.forEach((socketId) => {
+//           io.sockets.sockets[socketId].disconnect();
+//           console.log(`${socketId} disconnected`);
+//         });
+//       }
 
 //   let roomName = Math.random().toString(36).substring(2, 15);
 //   clientRooms[socket.id] = roomName;
